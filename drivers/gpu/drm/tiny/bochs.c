@@ -2,6 +2,7 @@
 
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <asm/bug.h>
 
 #include <drm/drm_aperture.h>
 #include <drm/drm_atomic_helper.h>
@@ -105,7 +106,11 @@ static void bochs_vga_writeb(struct bochs_device *bochs, u16 ioport, u8 val)
 
 		writeb(val, bochs->mmio + offset);
 	} else {
+#ifdef HAS_IOPORT
 		outb(val, ioport);
+#else
+		WARN_ONCE(1, "Non-MMIO bochs device needs HAS_IOPORT");
+#endif
 	}
 }
 
@@ -119,7 +124,12 @@ static u8 bochs_vga_readb(struct bochs_device *bochs, u16 ioport)
 
 		return readb(bochs->mmio + offset);
 	} else {
+#ifdef HAS_IOPORT
 		return inb(ioport);
+#else
+		WARN_ONCE(1, "Non-MMIO bochs device needs HAS_IOPORT");
+		return 0xff;
+#endif
 	}
 }
 
@@ -132,8 +142,13 @@ static u16 bochs_dispi_read(struct bochs_device *bochs, u16 reg)
 
 		ret = readw(bochs->mmio + offset);
 	} else {
+#ifdef HAS_IOPORT
 		outw(reg, VBE_DISPI_IOPORT_INDEX);
 		ret = inw(VBE_DISPI_IOPORT_DATA);
+#else
+		WARN_ONCE(1, "Non-MMIO bochs device needs HAS_IOPORT");
+		ret = 0xffff;
+#endif
 	}
 	return ret;
 }
@@ -145,8 +160,12 @@ static void bochs_dispi_write(struct bochs_device *bochs, u16 reg, u16 val)
 
 		writew(val, bochs->mmio + offset);
 	} else {
+#ifdef HAS_IOPORT
 		outw(reg, VBE_DISPI_IOPORT_INDEX);
 		outw(val, VBE_DISPI_IOPORT_DATA);
+#else
+		WARN_ONCE(1, "Non-MMIO bochs device needs HAS_IOPORT");
+#endif
 	}
 }
 
