@@ -5,6 +5,7 @@
 
 config ARCH_SUPPORTS_ACPI
 	bool
+	depends on HAS_IOPORT
 
 menuconfig ACPI
 	bool "ACPI (Advanced Configuration and Power Interface) Support"
