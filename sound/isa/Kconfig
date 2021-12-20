@@ -23,6 +23,7 @@ menuconfig SND_ISA
 	bool "ISA sound devices"
 	depends on ISA || COMPILE_TEST
 	depends on ISA_DMA_API
+	depends on HAS_IOPORT
 	default y
 	help
 	  Support for sound devices connected via the ISA bus.
@@ -31,6 +32,7 @@ if SND_ISA
 
 config SND_ADLIB
 	tristate "AdLib FM card"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	help
 	  Say Y here to include support for AdLib FM cards.
@@ -41,6 +43,7 @@ config SND_ADLIB
 config SND_AD1816A
 	tristate "Analog Devices SoundPort AD1816A"
 	depends on PNP
+	depends on HAS_IOPORT
 	select ISAPNP
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
@@ -69,6 +72,7 @@ config SND_AD1848
 config SND_ALS100
 	tristate "Diamond Tech. DT-019x and Avance Logic ALSxxx"
 	depends on PNP
+	depends on HAS_IOPORT
 	select ISAPNP
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
@@ -84,6 +88,7 @@ config SND_ALS100
 config SND_AZT1605
 	tristate "Aztech AZT1605 Driver"
 	depends on SND
+	depends on HAS_IOPORT
 	select SND_WSS_LIB
 	select SND_MPU401_UART
 	select SND_OPL3_LIB
@@ -97,6 +102,7 @@ config SND_AZT1605
 config SND_AZT2316
 	tristate "Aztech AZT2316 Driver"
 	depends on SND
+	depends on HAS_IOPORT
 	select SND_WSS_LIB
 	select SND_MPU401_UART
 	select SND_OPL3_LIB
@@ -110,6 +116,7 @@ config SND_AZT2316
 config SND_AZT2320
 	tristate "Aztech Systems AZT2320"
 	depends on PNP
+	depends on HAS_IOPORT
 	select ISAPNP
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
@@ -123,6 +130,7 @@ config SND_AZT2320
 
 config SND_CMI8328
 	tristate "C-Media CMI8328"
+	depends on HAS_IOPORT
 	select SND_WSS_LIB
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
@@ -135,6 +143,7 @@ config SND_CMI8328
 
 config SND_CMI8330
 	tristate "C-Media CMI8330"
+	depends on HAS_IOPORT
 	select SND_WSS_LIB
 	select SND_SB16_DSP
 	select SND_OPL3_LIB
@@ -148,6 +157,7 @@ config SND_CMI8330
 
 config SND_CS4231
 	tristate "Generic Cirrus Logic CS4231 driver"
+	depends on HAS_IOPORT
 	select SND_MPU401_UART
 	select SND_WSS_LIB
 	help
@@ -159,6 +169,7 @@ config SND_CS4231
 
 config SND_CS4236
 	tristate "Generic Cirrus Logic CS4232/CS4236+ driver"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
@@ -172,6 +183,7 @@ config SND_CS4236
 
 config SND_ES1688
 	tristate "Generic ESS ES688/ES1688 and ES968 PnP driver"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_PCM
@@ -184,6 +196,7 @@ config SND_ES1688
 
 config SND_ES18XX
 	tristate "Generic ESS ES18xx driver"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_PCM
@@ -195,7 +208,7 @@ config SND_ES18XX
 
 config SND_SC6000
 	tristate "Gallant SC-6000/6600/7000 and Audio Excel DSP 16"
-	depends on HAS_IOPORT_MAP
+	depends on HAS_IOPORT_MAP && HAS_IOPORT
 	select SND_WSS_LIB
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
@@ -223,6 +236,7 @@ config SND_GUSCLASSIC
 
 config SND_GUSEXTREME
 	tristate "Gravis UltraSound Extreme"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_PCM
@@ -273,6 +287,7 @@ config SND_INTERWAVE_STB
 
 config SND_JAZZ16
 	tristate "Media Vision Jazz16 card and compatibles"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_SB8_DSP
@@ -289,6 +304,7 @@ config SND_JAZZ16
 
 config SND_OPL3SA2
 	tristate "Yamaha OPL3-SA2/SA3"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
@@ -301,6 +317,7 @@ config SND_OPL3SA2
 
 config SND_OPTI92X_AD1848
 	tristate "OPTi 82C92x - AD1848"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_OPL4_LIB
 	select SND_MPU401_UART
@@ -314,6 +331,7 @@ config SND_OPTI92X_AD1848
 
 config SND_OPTI92X_CS4231
 	tristate "OPTi 82C92x - CS4231"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_OPL4_LIB
 	select SND_MPU401_UART
@@ -327,6 +345,7 @@ config SND_OPTI92X_CS4231
 
 config SND_OPTI93X
 	tristate "OPTi 82C93x"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
@@ -339,6 +358,7 @@ config SND_OPTI93X
 
 config SND_MIRO
 	tristate "Miro miroSOUND PCM1pro/PCM12/PCM20radio driver"
+	depends on HAS_IOPORT
 	select SND_OPL4_LIB
 	select SND_WSS_LIB
 	select SND_MPU401_UART
@@ -352,6 +372,7 @@ config SND_MIRO
 
 config SND_SB8
 	tristate "Sound Blaster 1.0/2.0/Pro (8-bit)"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_RAWMIDI
 	select SND_SB8_DSP
@@ -364,6 +385,7 @@ config SND_SB8
 
 config SND_SB16
 	tristate "Sound Blaster 16 (PnP)"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_SB16_DSP
@@ -376,6 +398,7 @@ config SND_SB16
 
 config SND_SBAWE
 	tristate "Sound Blaster AWE (32,64) (PnP)"
+	depends on HAS_IOPORT
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_SB16_DSP
@@ -405,6 +428,7 @@ config SND_SB16_CSP
 
 config SND_SSCAPE
 	tristate "Ensoniq SoundScape driver"
+	depends on HAS_IOPORT
 	select SND_MPU401_UART
 	select SND_WSS_LIB
 	select FW_LOADER
@@ -426,6 +450,7 @@ config SND_SSCAPE
 
 config SND_WAVEFRONT
 	tristate "Turtle Beach Maui,Tropez,Tropez+ (Wavefront)"
+	depends on HAS_IOPORT
 	select FW_LOADER
 	select SND_OPL3_LIB
 	select SND_MPU401_UART
@@ -439,7 +464,7 @@ config SND_WAVEFRONT
 
 config SND_MSND_PINNACLE
 	tristate "Turtle Beach MultiSound Pinnacle/Fiji driver"
-	depends on X86
+	depends on X86 && HAS_IOPORT
 	select FW_LOADER
 	select SND_MPU401_UART
 	select SND_PCM
@@ -452,7 +477,7 @@ config SND_MSND_PINNACLE
 
 config SND_MSND_CLASSIC
 	tristate "Support for Turtle Beach MultiSound Classic, Tahiti, Monterey"
-	depends on X86
+	depends on X86 && HAS_IOPORT
 	select FW_LOADER
 	select SND_MPU401_UART
 	select SND_PCM

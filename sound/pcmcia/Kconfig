@@ -13,6 +13,7 @@ if SND_PCMCIA && PCMCIA
 config SND_VXPOCKET
 	tristate "Digigram VXpocket"
 	select SND_VX_LIB
+	depends on HAS_IOPORT
 	help
 	  Say Y here to include support for Digigram VXpocket and
 	  VXpocket 440 soundcards.
@@ -22,6 +23,7 @@ config SND_VXPOCKET
 
 config SND_PDAUDIOCF
 	tristate "Sound Core PDAudioCF"
+	depends on HAS_IOPORT
 	select SND_PCM
 	help
 	  Say Y here to include support for Sound Core PDAudioCF
