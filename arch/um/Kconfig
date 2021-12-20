@@ -56,6 +56,7 @@ config NO_IOPORT_MAP
 
 config ISA
 	bool
+	depends on HAS_IOPORT
 
 config SBUS
 	bool

@@ -47,6 +47,7 @@ config PARISC
 	select MODULES_USE_ELF_RELA
 	select CLONE_BACKWARDS
 	select TTY # Needed for pdc_cons.c
+	select HAS_IOPORT if PCI
 	select HAVE_DEBUG_STACKOVERFLOW
 	select HAVE_ARCH_AUDITSYSCALL
 	select HAVE_ARCH_HASH
@@ -131,6 +132,7 @@ config STACKTRACE_SUPPORT
 
 config ISA_DMA_API
 	bool
+	depends on HAS_IOPORT
 
 config ARCH_MAY_HAVE_PC_FDC
 	bool

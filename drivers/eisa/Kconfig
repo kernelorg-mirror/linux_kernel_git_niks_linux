@@ -5,6 +5,7 @@
 
 config HAVE_EISA
 	bool
+	depends on HAS_IOPORT
 
 menuconfig EISA
 	bool "EISA support"

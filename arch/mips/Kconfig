@@ -47,6 +47,7 @@ config MIPS
 	select GENERIC_SMP_IDLE_THREAD
 	select GENERIC_TIME_VSYSCALL
 	select GUP_GET_PXX_LOW_HIGH if CPU_MIPS32 && PHYS_ADDR_T_64BIT
+	select HAS_IOPORT if !NO_IOPORT_MAP
 	select HAVE_ARCH_COMPILER_H
 	select HAVE_ARCH_JUMP_LABEL
 	select HAVE_ARCH_KGDB if MIPS_FP_SUPPORT
@@ -3120,6 +3121,7 @@ config PCI_DRIVERS_LEGACY
 # users to choose the right thing ...
 #
 config ISA
+	depends on HAS_IOPORT
 	bool
 
 config TC
