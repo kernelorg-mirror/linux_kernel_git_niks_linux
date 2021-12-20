@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0-only
 config SND_MPU401_UART
 	tristate
+	depends on HAS_IOPORT
 	select SND_RAWMIDI
 
 config SND_OPL3_LIB
 	tristate
+	depends on HAS_IOPPORT
 	select SND_TIMER
 	select SND_HWDEP
 	select SND_SEQ_DEVICE if SND_SEQUENCER != n
@@ -128,6 +130,7 @@ config SND_VIRMIDI
 
 config SND_MTPAV
 	tristate "MOTU MidiTimePiece AV multiport MIDI"
+	depends on HAS_IOPORT
 	select SND_RAWMIDI
 	help
 	  To use a MOTU MidiTimePiece AV multiport MIDI adapter
@@ -152,6 +155,7 @@ config SND_MTS64
 
 config SND_SERIAL_U16550
 	tristate "UART16550 serial MIDI driver"
+	depends on HAS_IOPORT
 	select SND_RAWMIDI
 	help
 	  To include support for MIDI serial port interfaces, say Y here
@@ -167,6 +171,7 @@ config SND_SERIAL_U16550
 
 config SND_MPU401
 	tristate "Generic MPU-401 UART driver"
+	depends on HAS_IOPORT
 	select SND_MPU401_UART
 	help
 	  Say Y here to include support for MIDI ports compatible with

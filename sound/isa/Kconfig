@@ -31,7 +31,7 @@ if SND_ISA
 
 config SND_ADLIB
 	tristate "AdLib FM card"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	help
 	  Say Y here to include support for AdLib FM cards.
 
@@ -42,7 +42,7 @@ config SND_AD1816A
 	tristate "Analog Devices SoundPort AD1816A"
 	depends on PNP
 	select ISAPNP
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_PCM
 	select SND_TIMER
@@ -70,7 +70,7 @@ config SND_ALS100
 	tristate "Diamond Tech. DT-019x and Avance Logic ALSxxx"
 	depends on PNP
 	select ISAPNP
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_SB16_DSP
 	help
@@ -86,7 +86,7 @@ config SND_AZT1605
 	depends on SND
 	select SND_WSS_LIB
 	select SND_MPU401_UART
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	help
 	  Say Y here to include support for Aztech Sound Galaxy cards
 	  based on the AZT1605 chipset.
@@ -99,7 +99,7 @@ config SND_AZT2316
 	depends on SND
 	select SND_WSS_LIB
 	select SND_MPU401_UART
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	help
 	  Say Y here to include support for Aztech Sound Galaxy cards
 	  based on the AZT2316 chipset.
@@ -111,7 +111,7 @@ config SND_AZT2320
 	tristate "Aztech Systems AZT2320"
 	depends on PNP
 	select ISAPNP
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
 	help
@@ -124,7 +124,7 @@ config SND_AZT2320
 config SND_CMI8328
 	tristate "C-Media CMI8328"
 	select SND_WSS_LIB
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	help
 	  Say Y here to include support for soundcards based on the
@@ -137,7 +137,7 @@ config SND_CMI8330
 	tristate "C-Media CMI8330"
 	select SND_WSS_LIB
 	select SND_SB16_DSP
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	help
 	  Say Y here to include support for soundcards based on the
@@ -159,7 +159,7 @@ config SND_CS4231
 
 config SND_CS4236
 	tristate "Generic Cirrus Logic CS4232/CS4236+ driver"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
 	help
@@ -172,7 +172,7 @@ config SND_CS4236
 
 config SND_ES1688
 	tristate "Generic ESS ES688/ES1688 and ES968 PnP driver"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_PCM
 	help
@@ -184,7 +184,7 @@ config SND_ES1688
 
 config SND_ES18XX
 	tristate "Generic ESS ES18xx driver"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_PCM
 	help
@@ -197,7 +197,7 @@ config SND_SC6000
 	tristate "Gallant SC-6000/6600/7000 and Audio Excel DSP 16"
 	depends on HAS_IOPORT_MAP
 	select SND_WSS_LIB
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	help
 	  Say Y here to include support for Gallant SC-6000, SC-6600, SC-7000
@@ -223,7 +223,7 @@ config SND_GUSCLASSIC
 
 config SND_GUSEXTREME
 	tristate "Gravis UltraSound Extreme"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_PCM
 	select SND_TIMER
@@ -273,7 +273,7 @@ config SND_INTERWAVE_STB
 
 config SND_JAZZ16
 	tristate "Media Vision Jazz16 card and compatibles"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_SB8_DSP
 	help
@@ -289,7 +289,7 @@ config SND_JAZZ16
 
 config SND_OPL3SA2
 	tristate "Yamaha OPL3-SA2/SA3"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
 	help
@@ -301,7 +301,7 @@ config SND_OPL3SA2
 
 config SND_OPTI92X_AD1848
 	tristate "OPTi 82C92x - AD1848"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_OPL4_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
@@ -314,7 +314,7 @@ config SND_OPTI92X_AD1848
 
 config SND_OPTI92X_CS4231
 	tristate "OPTi 82C92x - CS4231"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_OPL4_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
@@ -327,7 +327,7 @@ config SND_OPTI92X_CS4231
 
 config SND_OPTI93X
 	tristate "OPTi 82C93x"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
 	help
@@ -352,7 +352,7 @@ config SND_MIRO
 
 config SND_SB8
 	tristate "Sound Blaster 1.0/2.0/Pro (8-bit)"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_RAWMIDI
 	select SND_SB8_DSP
 	help
@@ -364,7 +364,7 @@ config SND_SB8
 
 config SND_SB16
 	tristate "Sound Blaster 16 (PnP)"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_SB16_DSP
 	help
@@ -376,7 +376,7 @@ config SND_SB16
 
 config SND_SBAWE
 	tristate "Sound Blaster AWE (32,64) (PnP)"
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_SB16_DSP
 	select SND_SEQ_DEVICE if SND_SEQUENCER != n
@@ -427,7 +427,7 @@ config SND_SSCAPE
 config SND_WAVEFRONT
 	tristate "Turtle Beach Maui,Tropez,Tropez+ (Wavefront)"
 	select FW_LOADER
-	select SND_OPL3_LIB
+	depends on SND_OPL3_LIB
 	select SND_MPU401_UART
 	select SND_WSS_LIB
 	help
