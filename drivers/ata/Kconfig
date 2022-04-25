@@ -342,6 +342,7 @@ endif # HAS_DMA
 
 config ATA_SFF
 	bool "ATA SFF support (for legacy IDE and PATA)"
+	depends on HAS_IOPORT
 	default y
 	help
 	  This option adds support for ATA controllers with SFF
