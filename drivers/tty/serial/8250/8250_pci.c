@@ -847,6 +847,7 @@ static int pci_netmos_init(struct pci_dev *dev)
 	return num_serial;
 }
 
+#ifdef CONFIG_HAS_IOPORT
 /*
  * These chips are available with optionally one parallel port and up to
  * two serial ports. Unfortunately they all have the same product id.
@@ -973,6 +974,7 @@ static void pci_ite887x_exit(struct pci_dev *dev)
 	ioport &= 0xffff;
 	release_region(ioport, ITE_887x_IOSIZE);
 }
+#endif /* CONFIG_HAS_IOPORT */
 
 /*
  * Oxford Semiconductor Inc.
@@ -1255,6 +1257,7 @@ static int pci_asix_setup(struct serial_private *priv,
 #define QOPR_CLOCK_X8		0x0003
 #define QOPR_CLOCK_RATE_MASK	0x0003
 
+#ifdef CONFIG_HAS_IOPORT
 /* Quatech devices have their own extra interface features */
 static struct pci_device_id quatech_cards[] = {
 	{ PCI_DEVICE_DATA(QUATECH, QSC100,   1) },
@@ -1474,6 +1477,7 @@ static int pci_quatech_setup(struct serial_private *priv,
 		pci_warn(priv->dev, "software control of RS422 features not currently supported.\n");
 	return pci_default_setup(priv, board, port, idx);
 }
+#endif /* CONFIG_HAS_IOPORT */
 
 static int pci_default_setup(struct serial_private *priv,
 		  const struct pciserial_board *board,
@@ -1753,6 +1757,7 @@ static int skip_tx_en_setup(struct serial_private *priv,
 	return pci_default_setup(priv, board, port, idx);
 }
 
+#ifdef CONFIG_HAS_IOPORT
 static void kt_handle_break(struct uart_port *p)
 {
 	struct uart_8250_port *up = up_to_u8250p(p);
@@ -1796,6 +1801,7 @@ static int kt_serial_setup(struct serial_private *priv,
 	port->port.handle_break = kt_handle_break;
 	return skip_tx_en_setup(priv, board, port, idx);
 }
+#endif /* CONFIG_HAS_IOPORT */
 
 static int pci_eg20t_init(struct pci_dev *dev)
 {
@@ -1840,6 +1846,7 @@ pci_wch_ch38x_setup(struct serial_private *priv,
 #define CH384_XINT_ENABLE_REG   0xEB
 #define CH384_XINT_ENABLE_BIT   0x02
 
+#ifdef CONFIG_HAS_IOPORT
 static int pci_wch_ch38x_init(struct pci_dev *dev)
 {
 	int max_port;
@@ -1867,6 +1874,7 @@ static void pci_wch_ch38x_exit(struct pci_dev *dev)
 	iobase = pci_resource_start(dev, 0);
 	outb(0x0, iobase + CH384_XINT_ENABLE_REG);
 }
+#endif /* CONFIG_HAS_IOPORT */
 
 
 static int
@@ -2070,6 +2078,7 @@ static struct pci_serial_quirk pci_serial_quirks[] = {
 		.subdevice	= PCI_ANY_ID,
 		.setup		= ce4100_serial_setup,
 	},
+#ifdef CONFIG_HAS_IOPORT
 	{
 		.vendor		= PCI_VENDOR_ID_INTEL,
 		.device		= PCI_DEVICE_ID_INTEL_PATSBURG_KT,
@@ -2089,6 +2098,7 @@ static struct pci_serial_quirk pci_serial_quirks[] = {
 		.setup		= pci_default_setup,
 		.exit		= pci_ite887x_exit,
 	},
+#endif
 	/*
 	 * National Instruments
 	 */
@@ -2210,6 +2220,7 @@ static struct pci_serial_quirk pci_serial_quirks[] = {
 		.exit		= pci_ni8430_exit,
 	},
 	/* Quatech */
+#ifdef CONFIG_HAS_IOPORT
 	{
 		.vendor		= PCI_VENDOR_ID_QUATECH,
 		.device		= PCI_ANY_ID,
@@ -2218,6 +2229,7 @@ static struct pci_serial_quirk pci_serial_quirks[] = {
 		.init		= pci_quatech_init,
 		.setup		= pci_quatech_setup,
 	},
+#endif
 	/*
 	 * Panacom
 	 */
@@ -2588,6 +2600,7 @@ static struct pci_serial_quirk pci_serial_quirks[] = {
 		.subdevice      = PCI_ANY_ID,
 		.setup          = pci_wch_ch38x_setup,
 	},
+#ifdef CONFIG_HAS_IOPORT
 	/* WCH CH384 8S card (16850 clone) */
 	{
 		.vendor         = PCIE_VENDOR_ID_WCH,
@@ -2598,6 +2611,7 @@ static struct pci_serial_quirk pci_serial_quirks[] = {
 		.exit		= pci_wch_ch38x_exit,
 		.setup          = pci_wch_ch38x_setup,
 	},
+#endif
 	/*
 	 * ASIX devices with FIFO bug
 	 */
