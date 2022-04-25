@@ -156,6 +156,16 @@ static const struct pci_device_id pci_use_msi[] = {
 static int pci_default_setup(struct serial_private*,
 	  const struct pciserial_board*, struct uart_8250_port *, int);
 
+#ifndef CONFIG_HAS_IOPORT
+static int pci_fail_io_port_setup(struct serial_private *priv,
+		  const struct pciserial_board *board,
+		  struct uart_8250_port *port, int idx)
+{
+	pr_err("Serial port %lx requires I/O port support\n", port->port.iobase);
+	return -EINVAL;
+}
+#endif /* CONFIG_HAS_IOPORT */
+
 static void moan_device(const char *str, struct pci_dev *dev)
 {
 	pci_err(dev, "%s\n"
@@ -928,6 +938,7 @@ static int pci_netmos_init(struct pci_dev *dev)
 	return num_serial;
 }
 
+#ifdef CONFIG_HAS_IOPORT
 /*
  * These chips are available with optionally one parallel port and up to
  * two serial ports. Unfortunately they all have the same product id.
@@ -1054,6 +1065,10 @@ static void pci_ite887x_exit(struct pci_dev *dev)
 	ioport &= 0xffff;
 	release_region(ioport, ITE_887x_IOSIZE);
 }
+#else /* CONFIG_HAS_IOPORT */
+#define pci_ite887x_exit NULL
+#define pci_ite887x_init NULL
+#endif /* CONFIG_HAS_IOPORT */
 
 /*
  * Oxford Semiconductor Inc.
@@ -1313,6 +1328,7 @@ static int pci_oxsemi_tornado_setup(struct serial_private *priv,
 	return pci_default_setup(priv, board, up, idx);
 }
 
+#ifdef CONFIG_HAS_IOPORT
 #define QPCR_TEST_FOR1		0x3F
 #define QPCR_TEST_GET1		0x00
 #define QPCR_TEST_FOR2		0x40
@@ -1547,6 +1563,10 @@ static int pci_quatech_setup(struct serial_private *priv,
 		pci_warn(priv->dev, "software control of RS422 features not currently supported.\n");
 	return pci_default_setup(priv, board, port, idx);
 }
+#else /* CONFIG_HAS_IOPORT */
+#define pci_quatech_init NULL
+#define pci_quatech_setup pci_fail_io_port_setup
+#endif /* CONFIG_HAS_IOPORT */
 
 static int pci_default_setup(struct serial_private *priv,
 		  const struct pciserial_board *board,
@@ -1826,6 +1846,7 @@ static int skip_tx_en_setup(struct serial_private *priv,
 	return pci_default_setup(priv, board, port, idx);
 }
 
+#ifdef CONFIG_HAS_IOPORT
 static void kt_handle_break(struct uart_port *p)
 {
 	struct uart_8250_port *up = up_to_u8250p(p);
@@ -1869,6 +1890,9 @@ static int kt_serial_setup(struct serial_private *priv,
 	port->port.handle_break = kt_handle_break;
 	return skip_tx_en_setup(priv, board, port, idx);
 }
+#else /* CONFIG_HAS_IOPORT */
+#define kt_serial_setup pci_default_setup
+#endif
 
 static int pci_eg20t_init(struct pci_dev *dev)
 {
@@ -1879,6 +1903,7 @@ static int pci_eg20t_init(struct pci_dev *dev)
 #endif
 }
 
+#ifdef CONFIG_HAS_IOPORT
 static int
 pci_wch_ch353_setup(struct serial_private *priv,
 		    const struct pciserial_board *board,
@@ -1940,6 +1965,14 @@ static void pci_wch_ch38x_exit(struct pci_dev *dev)
 	iobase = pci_resource_start(dev, 0);
 	outb(0x0, iobase + CH384_XINT_ENABLE_REG);
 }
+#else /* CONFIG_HAS_IOPORT */
+#define pci_wch_ch353_setup pci_fail_io_port_setup
+#define pci_wch_ch355_setup pci_fail_io_port_setup
+
+#define pci_wch_ch38x_init NULL
+#define pci_wch_ch38x_setup pci_fail_io_port_setup
+#define pci_wch_ch38x_exit NULL
+#endif /* CONFIG_HAS_IOPORT */
 
 
 static int
@@ -1966,6 +1999,7 @@ pci_sunix_setup(struct serial_private *priv,
 	return setup_port(priv, port, bar, offset, 0);
 }
 
+#ifdef CONFIG_HAS_IOPORT
 #define MOXA_PUART_GPIO_EN	0x09
 #define MOXA_PUART_GPIO_OUT	0x0A
 
@@ -2091,6 +2125,10 @@ pci_moxa_setup(struct serial_private *priv,
 
 	return setup_port(priv, port, bar, offset, 0);
 }
+#else /* CONFIG_HAS_IOPORT */
+#define pci_moxa_init NULL
+#define pci_moxa_setup pci_fail_io_port_setup
+#endif /* CONFIG_HAS_IOPORT */
 
 /*
  * Master list of serial port init/setup/exit quirks.
