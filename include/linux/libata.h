@@ -2012,7 +2012,9 @@ extern int ata_bmdma_port_start(struct ata_port *ap);
 extern int ata_bmdma_port_start32(struct ata_port *ap);
 
 #ifdef CONFIG_PCI
+#ifdef CONFIG_HAS_IOPORT
 extern int ata_pci_bmdma_clear_simplex(struct pci_dev *pdev);
+#endif /* CONFIG_HAS_IOPORT */
 extern void ata_pci_bmdma_init(struct ata_host *host);
 extern int ata_pci_bmdma_prepare_host(struct pci_dev *pdev,
 				      const struct ata_port_info * const * ppi,

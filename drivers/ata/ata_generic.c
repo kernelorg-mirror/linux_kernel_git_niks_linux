@@ -197,8 +197,10 @@ static int ata_generic_init_one(struct pci_dev *dev, const struct pci_device_id 
 	if (!(command & PCI_COMMAND_IO))
 		return -ENODEV;
 
+#ifdef CONFIG_PATA_ALI
 	if (dev->vendor == PCI_VENDOR_ID_AL)
 		ata_pci_bmdma_clear_simplex(dev);
+#endif /* CONFIG_PATA_ALI */
 
 	if (dev->vendor == PCI_VENDOR_ID_ATI) {
 		int rc = pcim_enable_device(dev);
