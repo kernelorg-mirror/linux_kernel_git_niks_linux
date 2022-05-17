@@ -10,6 +10,8 @@
 #include <linux/iommu.h>
 #include <linux/iommu-helper.h>
 #include <linux/sizes.h>
+#include <linux/rculist.h>
+#include <linux/rcupdate.h>
 #include <asm/pci_dma.h>
 
 static const struct iommu_ops s390_iommu_ops;
@@ -61,7 +63,7 @@ static struct iommu_domain *s390_domain_alloc(unsigned domain_type)
 
 	spin_lock_init(&s390_domain->dma_table_lock);
 	spin_lock_init(&s390_domain->list_lock);
-	INIT_LIST_HEAD(&s390_domain->devices);
+	INIT_LIST_HEAD_RCU(&s390_domain->devices);
 
 	return &s390_domain->domain;
 }
@@ -70,7 +72,9 @@ static void s390_domain_free(struct iommu_domain *domain)
 {
 	struct s390_domain *s390_domain = to_s390_domain(domain);
 
+	rcu_read_lock();
 	WARN_ON(!list_empty(&s390_domain->devices));
+	rcu_read_unlock();
 	dma_cleanup_tables(s390_domain->dma_table);
 	kfree(s390_domain);
 }
@@ -84,7 +88,7 @@ static void __s390_iommu_detach_device(struct zpci_dev *zdev)
 		return;
 
 	spin_lock_irqsave(&s390_domain->list_lock, flags);
-	list_del_init(&zdev->iommu_list);
+	list_del_rcu(&zdev->iommu_list);
 	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
 
 	zpci_unregister_ioat(zdev, 0);
@@ -127,7 +131,7 @@ static int s390_iommu_attach_device(struct iommu_domain *domain,
 	zdev->s390_domain = s390_domain;
 
 	spin_lock_irqsave(&s390_domain->list_lock, flags);
-	list_add(&zdev->iommu_list, &s390_domain->devices);
+	list_add_rcu(&zdev->iommu_list, &s390_domain->devices);
 	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
 
 	return 0;
@@ -203,17 +207,16 @@ static void s390_iommu_flush_iotlb_all(struct iommu_domain *domain)
 {
 	struct s390_domain *s390_domain = to_s390_domain(domain);
 	struct zpci_dev *zdev;
-	unsigned long flags;
 	int rc;
 
-	spin_lock_irqsave(&s390_domain->list_lock, flags);
-	list_for_each_entry(zdev, &s390_domain->devices, iommu_list) {
+	rcu_read_lock();
+	list_for_each_entry_rcu(zdev, &s390_domain->devices, iommu_list) {
 		rc = zpci_refresh_trans((u64)zdev->fh << 32, zdev->start_dma,
 					zdev->end_dma - zdev->start_dma + 1);
 		if (rc)
 			break;
 	}
-	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
+	rcu_read_unlock();
 }
 
 static void s390_iommu_iotlb_sync(struct iommu_domain *domain,
@@ -222,21 +225,20 @@ static void s390_iommu_iotlb_sync(struct iommu_domain *domain,
 	struct s390_domain *s390_domain = to_s390_domain(domain);
 	size_t size = gather->end - gather->start + 1;
 	struct zpci_dev *zdev;
-	unsigned long flags;
 	int rc;
 
 	/* If gather was never added to there is nothing to flush */
 	if (gather->start == ULONG_MAX)
 		return;
 
-	spin_lock_irqsave(&s390_domain->list_lock, flags);
-	list_for_each_entry(zdev, &s390_domain->devices, iommu_list) {
+	rcu_read_lock();
+	list_for_each_entry_rcu(zdev, &s390_domain->devices, iommu_list) {
 		rc = zpci_refresh_trans((u64)zdev->fh << 32, gather->start,
 					size);
 		if (rc)
 			break;
 	}
-	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
+	rcu_read_unlock();
 }
 
 static void s390_iommu_iotlb_sync_map(struct iommu_domain *domain,
@@ -244,11 +246,10 @@ static void s390_iommu_iotlb_sync_map(struct iommu_domain *domain,
 {
 	struct s390_domain *s390_domain = to_s390_domain(domain);
 	struct zpci_dev *zdev;
-	unsigned long flags;
 	int rc;
 
-	spin_lock_irqsave(&s390_domain->list_lock, flags);
-	list_for_each_entry(zdev, &s390_domain->devices, iommu_list) {
+	rcu_read_lock();
+	list_for_each_entry_rcu(zdev, &s390_domain->devices, iommu_list) {
 		if (!zdev->tlb_refresh)
 			continue;
 		rc = zpci_refresh_trans((u64)zdev->fh << 32,
@@ -256,7 +257,7 @@ static void s390_iommu_iotlb_sync_map(struct iommu_domain *domain,
 		if (rc)
 			break;
 	}
-	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
+	rcu_read_unlock();
 }
 
 static int s390_iommu_update_trans(struct s390_domain *s390_domain,
