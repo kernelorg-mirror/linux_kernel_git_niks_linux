@@ -93,7 +93,7 @@ config IOMMU_DEBUGFS
 choice
 	prompt "IOMMU default domain type"
 	depends on IOMMU_API
-	default IOMMU_DEFAULT_DMA_LAZY if X86 || IA64
+	default IOMMU_DEFAULT_DMA_LAZY if X86 || IA64 || S390
 	default IOMMU_DEFAULT_DMA_STRICT
 	help
 	  Choose the type of IOMMU domain used to manage DMA API usage by
@@ -412,6 +412,7 @@ config ARM_SMMU_V3_SVA
 config S390_IOMMU
 	def_bool y if S390 && PCI
 	depends on S390 && PCI
+	select IOMMU_DMA
 	select IOMMU_API
 	help
 	  Support for the IOMMU API for s390 PCI devices.
