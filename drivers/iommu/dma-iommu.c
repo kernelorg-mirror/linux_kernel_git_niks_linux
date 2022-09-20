@@ -49,8 +49,13 @@ struct iommu_dma_cookie {
 		/* Full allocator for IOMMU_DMA_IOVA_COOKIE */
 		struct {
 			struct iova_domain		iovad;
-			/* Flush queue */
-			struct iova_percpu __percpu *percpu_fq;
+			/* Flush queues */
+			union {
+				struct iova_percpu __percpu *percpu_fq;
+				struct iova_simple *simple_fq;
+			};
+			/* Queue timeout in milliseconds */
+			unsigned int		fq_timeout;
 			/* Number of TLB flushes that have been started */
 			atomic64_t		fq_flush_start_cnt;
 			/* Number of TLB flushes that have been finished */
@@ -103,6 +108,119 @@ struct iova_percpu {
 	unsigned int head, tail;
 	spinlock_t lock;
 };
+
+/* Simplified batched flush queue for expensive IOTLB flushes */
+#define IOVA_SIMPLE_SIZE	32768
+/* Maximum time in milliseconds an IOVA can remain lazily freed */
+#define IOVA_SIMPLE_TIMEOUT	1000
+
+struct iova_simple_entry {
+	unsigned long iova_pfn;
+	unsigned long pages;
+};
+
+struct iova_simple {
+	/* Unlike iova_percpu we use a single queue lock */
+	spinlock_t lock;
+	unsigned int tail;
+	unsigned long total_pages;
+	struct list_head freelist;
+	struct iova_simple_entry entries[];
+};
+
+static bool is_full_simple(struct iommu_dma_cookie *cookie)
+{
+	struct iommu_domain *fq_domain = cookie->fq_domain;
+	struct iova_domain *iovad = &cookie->iovad;
+	struct iova_simple *sq = cookie->simple_fq;
+	unsigned long aperture_pages;
+
+	assert_spin_locked(&sq->lock);
+
+	/* If more than 7/8 the aperture is batched let's flush */
+	aperture_pages = ((fq_domain->geometry.aperture_end +  1) -
+		fq_domain->geometry.aperture_start) >> iova_shift(iovad);
+	aperture_pages -= aperture_pages >> 3;
+
+	return (sq->tail >= IOVA_SIMPLE_SIZE ||
+		sq->total_pages >= aperture_pages);
+}
+
+static void flush_simple(struct iommu_dma_cookie *cookie)
+{
+	struct iova_simple *sq = cookie->simple_fq;
+	unsigned int i;
+
+	assert_spin_locked(&sq->lock);
+	/* We're flushing so postpone timeout */
+	mod_timer(&cookie->fq_timer,
+		  jiffies + msecs_to_jiffies(cookie->fq_timeout));
+	cookie->fq_domain->ops->flush_iotlb_all(cookie->fq_domain);
+
+	put_pages_list(&sq->freelist);
+	for (i = 0; i < sq->tail; i++) {
+		free_iova_fast(&cookie->iovad,
+			       sq->entries[i].iova_pfn,
+			       sq->entries[i].pages);
+	}
+	sq->tail = 0;
+	sq->total_pages = 0;
+}
+
+static void flush_simple_lock(struct iommu_dma_cookie *cookie)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&cookie->simple_fq->lock, flags);
+	flush_simple(cookie);
+	spin_unlock_irqrestore(&cookie->simple_fq->lock, flags);
+}
+
+static void queue_iova_simple(struct iommu_dma_cookie *cookie,
+			      unsigned long pfn, unsigned long pages,
+			      struct list_head *freelist)
+{
+	struct iova_simple *sq = cookie->simple_fq;
+	unsigned long flags;
+	unsigned int idx;
+
+	spin_lock_irqsave(&sq->lock, flags);
+	if (is_full_simple(cookie))
+		flush_simple(cookie);
+	idx = sq->tail++;
+
+	sq->entries[idx].iova_pfn = pfn;
+	sq->entries[idx].pages    = pages;
+	list_splice(freelist, &sq->freelist);
+	sq->total_pages += pages;
+	spin_unlock_irqrestore(&sq->lock, flags);
+}
+
+static int iommu_dma_init_simple(struct iommu_dma_cookie *cookie)
+{
+	struct iova_simple *queue;
+
+	queue = vzalloc(sizeof(*queue) +
+			IOVA_SIMPLE_SIZE * sizeof(struct iova_simple_entry));
+	if (!queue)
+		return -ENOMEM;
+
+	INIT_LIST_HEAD(&queue->freelist);
+	cookie->fq_timeout = IOVA_SIMPLE_TIMEOUT;
+	cookie->simple_fq = queue;
+
+	return 0;
+}
+
+static void iommu_dma_free_simple(struct iommu_dma_cookie *cookie)
+{
+	if (!cookie->simple_fq)
+		return;
+
+	put_pages_list(&cookie->simple_fq->freelist);
+	vfree(cookie->simple_fq);
+	cookie->simple_fq = NULL;
+}
 
 #define ring_for_each_percpu(i, fq) \
 	for ((i) = (fq)->head; (i) != (fq)->tail; (i) = ((i) + 1) % IOVA_PERCPU_SIZE)
@@ -169,12 +287,23 @@ static void flush_percpu(struct iommu_dma_cookie *cookie)
 	}
 }
 
+static void iommu_dma_flush_fq(struct iommu_dma_cookie *cookie)
+{
+	if (!cookie->fq_domain)
+		return;
+
+	if (cookie->fq_domain->type == IOMMU_DOMAIN_DMA_FQ)
+		flush_percpu(cookie);
+	else
+		flush_simple_lock(cookie);
+}
+
 static void fq_flush_timeout(struct timer_list *t)
 {
 	struct iommu_dma_cookie *cookie = from_timer(cookie, t, fq_timer);
 
 	atomic_set(&cookie->fq_timer_on, 0);
-	flush_percpu(cookie);
+	iommu_dma_flush_fq(cookie);
 }
 
 static void queue_iova_percpu(struct iommu_dma_cookie *cookie,
@@ -223,13 +352,16 @@ static void queue_iova(struct iommu_dma_cookie *cookie,
 	 */
 	smp_mb();
 
-	queue_iova_percpu(cookie, pfn, pages, freelist);
+	if (cookie->fq_domain->type == IOMMU_DOMAIN_DMA_FQ)
+		queue_iova_percpu(cookie, pfn, pages, freelist);
+	else
+		queue_iova_simple(cookie, pfn, pages, freelist);
 
 	/* Avoid false sharing as much as possible. */
 	if (!atomic_read(&cookie->fq_timer_on) &&
 	    !atomic_xchg(&cookie->fq_timer_on, 1))
 		mod_timer(&cookie->fq_timer,
-			  jiffies + msecs_to_jiffies(IOVA_PERCPU_TIMEOUT));
+			  jiffies + msecs_to_jiffies(cookie->fq_timeout));
 }
 
 static void iommu_dma_free_percpu(struct iommu_dma_cookie *cookie)
@@ -253,7 +385,10 @@ static void iommu_dma_free_fq(struct iommu_dma_cookie *cookie)
 {
 	del_timer_sync(&cookie->fq_timer);
 	/* The IOVAs will be torn down separately, so just free our queued pages */
-	iommu_dma_free_percpu(cookie);
+	if (cookie->fq_domain->type == IOMMU_DOMAIN_DMA_FQ)
+		iommu_dma_free_percpu(cookie);
+	else
+		iommu_dma_free_simple(cookie);
 }
 
 static int iommu_dma_init_percpu(struct iommu_dma_cookie *cookie)
@@ -280,6 +415,7 @@ static int iommu_dma_init_percpu(struct iommu_dma_cookie *cookie)
 			INIT_LIST_HEAD(&fq->entries[i].freelist);
 	}
 
+	cookie->fq_timeout = IOVA_PERCPU_TIMEOUT;
 	cookie->percpu_fq = queue;
 
 	return 0;
@@ -294,7 +430,10 @@ int iommu_dma_init_fq(struct iommu_domain *domain)
 	if (cookie->fq_domain)
 		return 0;
 
-	rc = iommu_dma_init_percpu(cookie);
+	if (domain->type == IOMMU_DOMAIN_DMA_FQ)
+		rc = iommu_dma_init_percpu(cookie);
+	else
+		rc = iommu_dma_init_simple(cookie);
 	if (rc) {
 		pr_warn("iova flush queue initialization failed\n");
 		return rc;
@@ -613,7 +752,9 @@ static int iommu_dma_init_domain(struct iommu_domain *domain, dma_addr_t base,
 		goto done_unlock;
 
 	/* If the FQ fails we can simply fall back to strict mode */
-	if (domain->type == IOMMU_DOMAIN_DMA_FQ && iommu_dma_init_fq(domain))
+	if ((domain->type == IOMMU_DOMAIN_DMA_FQ ||
+	     domain->type == IOMMU_DOMAIN_DMA_SQ) &&
+	    iommu_dma_init_fq(domain))
 		domain->type = IOMMU_DOMAIN_DMA;
 
 	ret = iova_reserve_iommu_regions(dev, domain);

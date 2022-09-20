@@ -324,6 +324,15 @@ static bool s390_iommu_capable(struct device *dev, enum iommu_cap cap)
 	}
 }
 
+static int s390_iommu_def_domain_type(struct device *dev)
+{
+	struct zpci_dev *zdev = to_zpci_dev(dev);
+
+	if (zdev->tlb_refresh)
+		return IOMMU_DOMAIN_DMA_SQ;
+	return IOMMU_DOMAIN_DMA_FQ;
+}
+
 static struct iommu_domain *s390_domain_alloc(unsigned domain_type)
 {
 	struct s390_domain *s390_domain;
@@ -331,6 +340,7 @@ static struct iommu_domain *s390_domain_alloc(unsigned domain_type)
 	switch (domain_type) {
 	case IOMMU_DOMAIN_DMA:
 	case IOMMU_DOMAIN_DMA_FQ:
+	case IOMMU_DOMAIN_DMA_SQ:
 	case IOMMU_DOMAIN_UNMANAGED:
 		break;
 	default:
@@ -774,6 +784,7 @@ subsys_initcall(s390_iommu_init);
 
 static const struct iommu_ops s390_iommu_ops = {
 	.capable = s390_iommu_capable,
+	.def_domain_type = s390_iommu_def_domain_type,
 	.domain_alloc = s390_domain_alloc,
 	.probe_device = s390_iommu_probe_device,
 	.probe_finalize = s390_iommu_probe_finalize,
