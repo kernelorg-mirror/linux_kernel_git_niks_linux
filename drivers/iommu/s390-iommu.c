@@ -538,14 +538,17 @@ static void s390_iommu_iotlb_sync_map(struct iommu_domain *domain,
 {
 	struct s390_domain *s390_domain = to_s390_domain(domain);
 	struct zpci_dev *zdev;
+	int rc;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(zdev, &s390_domain->devices, iommu_list) {
 		if (!zdev->tlb_refresh)
 			continue;
 		atomic64_inc(&s390_domain->ctrs.sync_map_rpcits);
-		zpci_refresh_trans((u64)zdev->fh << 32,
-				   iova, size);
+		rc = zpci_refresh_trans((u64)zdev->fh << 32,
+					iova, size);
+		if (rc == -ENOMEM)
+			iommu_dma_flush_fq(domain->iova_cookie);
 	}
 	rcu_read_unlock();
 }

@@ -188,17 +188,21 @@ static void fq_flush_single(struct iommu_dma_cookie *cookie)
 	spin_unlock_irqrestore(&fq->lock, flags);
 }
 
+void iommu_dma_flush_fq(struct iommu_dma_cookie *cookie)
+{
+	fq_flush_iotlb(cookie);
+	if (cookie->fq_domain->type == IOMMU_DOMAIN_DMA_FQ)
+		fq_flush_percpu(cookie);
+	else
+		fq_flush_single(cookie);
+}
+
 static void fq_flush_timeout(struct timer_list *t)
 {
 	struct iommu_dma_cookie *cookie = from_timer(cookie, t, fq_timer);
 
 	atomic_set(&cookie->fq_timer_on, 0);
-	fq_flush_iotlb(cookie);
-
-	if (cookie->fq_domain->type == IOMMU_DOMAIN_DMA_FQ)
-		fq_flush_percpu(cookie);
-	else
-		fq_flush_single(cookie);
+	iommu_dma_flush_fq(cookie);
 }
 
 static void queue_iova(struct iommu_dma_cookie *cookie,

@@ -13,6 +13,7 @@ int iommu_get_dma_cookie(struct iommu_domain *domain);
 void iommu_put_dma_cookie(struct iommu_domain *domain);
 
 int iommu_dma_init_fq(struct iommu_domain *domain);
+void iommu_dma_flush_fq(struct iommu_dma_cookie *cookie);
 
 void iommu_dma_get_resv_regions(struct device *dev, struct list_head *list);
 
