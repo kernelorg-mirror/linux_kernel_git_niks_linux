@@ -287,7 +287,7 @@ static void flush_percpu(struct iommu_dma_cookie *cookie)
 	}
 }
 
-static void iommu_dma_flush_fq(struct iommu_dma_cookie *cookie)
+void iommu_dma_flush_fq(struct iommu_dma_cookie *cookie)
 {
 	if (!cookie->fq_domain)
 		return;

@@ -502,6 +502,10 @@ static void s390_iommu_flush_iotlb_all(struct iommu_domain *domain)
 		atomic64_inc(&s390_domain->ctrs.global_rpcits);
 		rc = zpci_refresh_trans((u64)zdev->fh << 32, zdev->start_dma,
 					zdev->end_dma - zdev->start_dma + 1);
+		if (rc == -ENOMEM) {
+			iommu_dma_flush_fq(domain->iova_cookie);
+			rc = 0;
+		}
 		if (rc)
 			break;
 	}
@@ -525,6 +529,10 @@ static void s390_iommu_iotlb_sync(struct iommu_domain *domain,
 		atomic64_inc(&s390_domain->ctrs.sync_rpcits);
 		rc = zpci_refresh_trans((u64)zdev->fh << 32, gather->start,
 					size);
+		if (rc == -ENOMEM) {
+			iommu_dma_flush_fq(domain->iova_cookie);
+			rc = 0;
+		}
 		if (rc)
 			break;
 	}
@@ -545,6 +553,10 @@ static void s390_iommu_iotlb_sync_map(struct iommu_domain *domain,
 		atomic64_inc(&s390_domain->ctrs.sync_map_rpcits);
 		rc = zpci_refresh_trans((u64)zdev->fh << 32,
 					iova, size);
+		if (rc == -ENOMEM) {
+			iommu_dma_flush_fq(domain->iova_cookie);
+			rc = 0;
+		}
 		if (rc)
 			break;
 	}
