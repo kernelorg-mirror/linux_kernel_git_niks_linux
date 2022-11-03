@@ -62,9 +62,12 @@ struct iommu_domain_geometry {
 #define __IOMMU_DOMAIN_DMA_API	(1U << 1)  /* Domain for use in DMA-API
 					      implementation              */
 #define __IOMMU_DOMAIN_PT	(1U << 2)  /* Domain is identity mapped   */
-#define __IOMMU_DOMAIN_DMA_FQ	(1U << 3)  /* DMA-API uses flush queue    */
+#define __IOMMU_DOMAIN_DMA_LAZY	(1U << 3)  /* DMA-API uses flush queue    */
 
 #define __IOMMU_DOMAIN_SVA	(1U << 4)  /* Shared process address space */
+
+#define __IOMMU_DOMAIN_DMA_PERCPU_Q	(1U << 5)  /* Per-CPU flush queue */
+#define __IOMMU_DOMAIN_DMA_SINGLE_Q	(1U << 6)  /* Single flush queue */
 
 /*
  * This are the possible domain-types
@@ -79,6 +82,8 @@ struct iommu_domain_geometry {
  *				  certain optimizations for these domains
  *	IOMMU_DOMAIN_DMA_FQ	- As above, but definitely using batched TLB
  *				  invalidation.
+ *	IOMMU_DOMAIN_DMA_SQ	- As IOMMU_DOMAIN_DMA_FQ, but batched TLB
+ *				  validations use single global queue
  *	IOMMU_DOMAIN_SVA	- DMA addresses are shared process addresses
  *				  represented by mm_struct's.
  */
@@ -89,7 +94,12 @@ struct iommu_domain_geometry {
 				 __IOMMU_DOMAIN_DMA_API)
 #define IOMMU_DOMAIN_DMA_FQ	(__IOMMU_DOMAIN_PAGING |	\
 				 __IOMMU_DOMAIN_DMA_API |	\
-				 __IOMMU_DOMAIN_DMA_FQ)
+				 __IOMMU_DOMAIN_DMA_LAZY |	\
+				 __IOMMU_DOMAIN_DMA_PERCPU_Q)
+#define IOMMU_DOMAIN_DMA_SQ	(__IOMMU_DOMAIN_PAGING |	\
+				 __IOMMU_DOMAIN_DMA_API |	\
+				 __IOMMU_DOMAIN_DMA_LAZY |	\
+				 __IOMMU_DOMAIN_DMA_SINGLE_Q)
 #define IOMMU_DOMAIN_SVA	(__IOMMU_DOMAIN_SVA)
 
 struct iommu_domain {
