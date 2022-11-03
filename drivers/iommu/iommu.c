@@ -145,6 +145,7 @@ static const char *iommu_domain_type_str(unsigned int t)
 		return "Unmanaged";
 	case IOMMU_DOMAIN_DMA:
 	case IOMMU_DOMAIN_DMA_FQ:
+	case IOMMU_DOMAIN_DMA_SQ:
 		return "Translated";
 	default:
 		return "Unknown";
@@ -477,7 +478,7 @@ early_param("iommu.strict", iommu_dma_setup);
 void iommu_set_dma_strict(void)
 {
 	iommu_dma_strict = true;
-	if (iommu_def_domain_type == IOMMU_DOMAIN_DMA_FQ)
+	if (!!(iommu_def_domain_type & __IOMMU_DOMAIN_DMA_LAZY))
 		iommu_def_domain_type = IOMMU_DOMAIN_DMA;
 }
 
@@ -677,6 +678,9 @@ static ssize_t iommu_group_show_type(struct iommu_group *group,
 			break;
 		case IOMMU_DOMAIN_DMA_FQ:
 			type = "DMA-FQ\n";
+			break;
+		case IOMMU_DOMAIN_DMA_SQ:
+			type = "DMA-SQ\n";
 			break;
 		}
 	}
@@ -2896,10 +2900,8 @@ static int iommu_change_dev_def_domain(struct iommu_group *group,
 	}
 
 	/* We can bring up a flush queue without tearing down the domain */
-	if (type == IOMMU_DOMAIN_DMA_FQ && prev_dom->type == IOMMU_DOMAIN_DMA) {
-		ret = iommu_dma_init_fq(prev_dom);
-		if (!ret)
-			prev_dom->type = IOMMU_DOMAIN_DMA_FQ;
+	if (!!(type & __IOMMU_DOMAIN_DMA_LAZY) && prev_dom->type == IOMMU_DOMAIN_DMA) {
+		ret = iommu_dma_init_fq(prev_dom, type);
 		goto out;
 	}
 
@@ -2970,6 +2972,8 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
 		req_type = IOMMU_DOMAIN_DMA;
 	else if (sysfs_streq(buf, "DMA-FQ"))
 		req_type = IOMMU_DOMAIN_DMA_FQ;
+	else if (sysfs_streq(buf, "DMA-SQ"))
+		req_type = IOMMU_DOMAIN_DMA_SQ;
 	else if (sysfs_streq(buf, "auto"))
 		req_type = 0;
 	else
@@ -3021,7 +3025,7 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
 
 	/* Check if the device in the group still has a driver bound to it */
 	device_lock(dev);
-	if (device_is_bound(dev) && !(req_type == IOMMU_DOMAIN_DMA_FQ &&
+	if (device_is_bound(dev) && !((req_type & __IOMMU_DOMAIN_DMA_LAZY) &&
 	    group->default_domain->type == IOMMU_DOMAIN_DMA)) {
 		pr_err_ratelimited("Device is still bound to driver\n");
 		ret = -EBUSY;
