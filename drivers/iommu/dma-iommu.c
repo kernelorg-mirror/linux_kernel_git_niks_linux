@@ -61,6 +61,8 @@ struct iommu_dma_cookie {
 			struct timer_list	fq_timer;
 			/* 1 when timer is active, 0 when not */
 			atomic_t		fq_timer_on;
+			/* timeout in ms */
+			unsigned long fq_timer_timeout;
 		};
 		/* Trivial linear page allocator for IOMMU_DMA_MSI_COOKIE */
 		dma_addr_t		msi_iova;
@@ -86,10 +88,16 @@ static int __init iommu_dma_forcedac_setup(char *str)
 early_param("iommu.forcedac", iommu_dma_forcedac_setup);
 
 /* Number of entries per flush queue */
-#define IOVA_FQ_SIZE	256
+#define IOVA_DEFAULT_FQ_SIZE	256
+
+/* Number of entries for a single queue */
+#define IOVA_SINGLE_FQ_SIZE	32768
 
 /* Timeout (in ms) after which entries are flushed from the queue */
-#define IOVA_FQ_TIMEOUT	10
+#define IOVA_DEFAULT_FQ_TIMEOUT	10
+
+/* Timeout (in ms) for a single queue */
+#define IOVA_SINGLE_FQ_TIMEOUT	1000
 
 /* Flush queue entry for deferred flushing */
 struct iova_fq_entry {
@@ -101,18 +109,19 @@ struct iova_fq_entry {
 
 /* Per-CPU flush queue structure */
 struct iova_fq {
-	struct iova_fq_entry entries[IOVA_FQ_SIZE];
-	unsigned int head, tail;
 	spinlock_t lock;
+	unsigned int head, tail;
+	unsigned int mod_mask;
+	struct iova_fq_entry entries[];
 };
 
 #define fq_ring_for_each(i, fq) \
-	for ((i) = (fq)->head; (i) != (fq)->tail; (i) = ((i) + 1) % IOVA_FQ_SIZE)
+	for ((i) = (fq)->head; (i) != (fq)->tail; (i) = ((i) + 1) & (fq)->mod_mask)
 
 static inline bool fq_full(struct iova_fq *fq)
 {
 	assert_spin_locked(&fq->lock);
-	return (((fq->tail + 1) % IOVA_FQ_SIZE) == fq->head);
+	return (((fq->tail + 1) & fq->mod_mask) == fq->head);
 }
 
 static inline unsigned int fq_ring_add(struct iova_fq *fq)
@@ -121,7 +130,7 @@ static inline unsigned int fq_ring_add(struct iova_fq *fq)
 
 	assert_spin_locked(&fq->lock);
 
-	fq->tail = (idx + 1) % IOVA_FQ_SIZE;
+	fq->tail = (idx + 1) & fq->mod_mask;
 
 	return idx;
 }
@@ -143,7 +152,7 @@ static void fq_ring_free(struct iommu_dma_cookie *cookie, struct iova_fq *fq)
 			       fq->entries[idx].iova_pfn,
 			       fq->entries[idx].pages);
 
-		fq->head = (fq->head + 1) % IOVA_FQ_SIZE;
+		fq->head = (fq->head + 1) & fq->mod_mask;
 	}
 }
 
@@ -241,7 +250,7 @@ static void queue_iova(struct iommu_dma_cookie *cookie,
 	if (!atomic_read(&cookie->fq_timer_on) &&
 	    !atomic_xchg(&cookie->fq_timer_on, 1))
 		mod_timer(&cookie->fq_timer,
-			  jiffies + msecs_to_jiffies(IOVA_FQ_TIMEOUT));
+			  jiffies + msecs_to_jiffies(cookie->fq_timer_timeout));
 }
 
 static void iommu_dma_free_fq_single(struct iova_fq *fq)
@@ -283,43 +292,45 @@ static void iommu_dma_free_fq(struct iommu_dma_cookie *cookie)
 }
 
 
-static void iommu_dma_init_one_fq(struct iova_fq *fq)
+static void iommu_dma_init_one_fq(struct iova_fq *fq, unsigned int fq_size)
 {
 	int i;
 
 	fq->head = 0;
 	fq->tail = 0;
+	fq->mod_mask = fq_size - 1;
 
 	spin_lock_init(&fq->lock);
 
-	for (i = 0; i < IOVA_FQ_SIZE; i++)
+	for (i = 0; i < fq_size; i++)
 		INIT_LIST_HEAD(&fq->entries[i].freelist);
 }
 
-static int iommu_dma_init_fq_single(struct iommu_dma_cookie *cookie)
+static int iommu_dma_init_fq_single(struct iommu_dma_cookie *cookie, unsigned int fq_size)
 {
 	struct iova_fq *queue;
 
-	queue = vzalloc(sizeof(*queue));
+	queue = vzalloc(struct_size(queue, entries, fq_size));
 	if (!queue)
 		return -ENOMEM;
-	iommu_dma_init_one_fq(queue);
+	iommu_dma_init_one_fq(queue, fq_size);
 	cookie->single_fq = queue;
 
 	return 0;
 }
 
-static int iommu_dma_init_fq_percpu(struct iommu_dma_cookie *cookie)
+static int iommu_dma_init_fq_percpu(struct iommu_dma_cookie *cookie, unsigned int fq_size)
 {
 	struct iova_fq __percpu *queue;
 	int cpu;
 
-	queue = alloc_percpu(struct iova_fq);
+	queue = __alloc_percpu(struct_size(queue, entries, fq_size),
+			       __alignof__(*queue));
 	if (!queue)
 		return -ENOMEM;
 
 	for_each_possible_cpu(cpu)
-		iommu_dma_init_one_fq(per_cpu_ptr(queue, cpu));
+		iommu_dma_init_one_fq(per_cpu_ptr(queue, cpu), fq_size);
 	cookie->percpu_fq = queue;
 	return 0;
 }
@@ -328,18 +339,27 @@ static int iommu_dma_init_fq_percpu(struct iommu_dma_cookie *cookie)
 int iommu_dma_init_fq(struct iommu_domain *domain, int type)
 {
 	struct iommu_dma_cookie *cookie = domain->iova_cookie;
+	unsigned int fq_size = IOVA_DEFAULT_FQ_SIZE;
 	int rc;
 
 	if (cookie->fq_domain)
 		return 0;
 
+	if (domain->type == IOMMU_DOMAIN_DMA_SQ)
+		fq_size = IOVA_SINGLE_FQ_SIZE;
+
+	if (!is_power_of_2(fq_size)) {
+		pr_err("FQ size must be a power of 2\n");
+		return -EINVAL;
+	}
+
 	atomic64_set(&cookie->fq_flush_start_cnt,  0);
 	atomic64_set(&cookie->fq_flush_finish_cnt, 0);
 
 	if (type == IOMMU_DOMAIN_DMA_FQ)
-		rc = iommu_dma_init_fq_percpu(cookie);
+		rc = iommu_dma_init_fq_percpu(cookie, fq_size);
 	else
-		rc = iommu_dma_init_fq_single(cookie);
+		rc = iommu_dma_init_fq_single(cookie, fq_size);
 
 	if (rc) {
 		pr_warn("iova flush queue initialization failed\n");
@@ -349,6 +369,8 @@ int iommu_dma_init_fq(struct iommu_domain *domain, int type)
 	}
 
 	domain->type = type;
+	cookie->fq_timer_timeout = (type == IOMMU_DOMAIN_DMA_SQ) ?
+			IOVA_SINGLE_FQ_TIMEOUT : IOVA_DEFAULT_FQ_TIMEOUT;
 	timer_setup(&cookie->fq_timer, fq_flush_timeout, 0);
 	atomic_set(&cookie->fq_timer_on, 0);
 	/*
