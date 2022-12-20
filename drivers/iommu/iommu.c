@@ -1616,6 +1616,16 @@ static int iommu_get_def_domain_type(struct device *dev)
 	return 0;
 }
 
+static int iommu_get_lazy_domain_type(struct device *dev)
+{
+	const struct iommu_ops *ops = dev_iommu_ops(dev);
+
+	if (ops->lazy_domain_type)
+		return ops->lazy_domain_type(dev);
+
+	return 0;
+}
+
 static int iommu_group_alloc_default_domain(struct bus_type *bus,
 					    struct iommu_group *group,
 					    unsigned int type)
@@ -1648,6 +1658,9 @@ static int iommu_alloc_default_domain(struct iommu_group *group,
 		return 0;
 
 	type = iommu_get_def_domain_type(dev) ? : iommu_def_domain_type;
+
+	if (!!(type & __IOMMU_DOMAIN_DMA_LAZY))
+		type = iommu_get_lazy_domain_type(dev) ? : type;
 
 	return iommu_group_alloc_default_domain(dev->bus, group, type);
 }
