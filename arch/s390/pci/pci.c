@@ -580,8 +580,9 @@ int zpci_setup_bus_resources(struct zpci_dev *zdev)
 			return -ENOMEM;
 		}
 		zdev->bars[i].res = res;
+		if (!zdev->has_resources)
+			zdev->has_resources = 1;
 	}
-	zdev->has_resources = 1;
 
 	return 0;
 }

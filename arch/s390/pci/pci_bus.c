@@ -55,7 +55,9 @@ static int zpci_bus_prepare_device(struct zpci_dev *zdev)
 	}
 
 	if (!zdev->has_resources) {
-		zpci_setup_bus_resources(zdev);
+		rc = zpci_setup_bus_resources(zdev);
+		if (rc)
+			pr_err("Failed to add one or more resources for PCI function %08x rc is %d\n", zdev->fid, rc);
 		for (i = 0; i < PCI_STD_NUM_BARS; i++) {
 			if (zdev->bars[i].res)
 				pci_bus_add_resource(zdev->zbus->bus, zdev->bars[i].res, 0);
