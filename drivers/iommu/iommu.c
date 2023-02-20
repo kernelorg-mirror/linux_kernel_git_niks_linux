@@ -2967,10 +2967,19 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
 		return -EINVAL;
 
 	mutex_lock(&group->mutex);
+	/* Ensure that device exists. */
+	if (list_empty(&group->devices)) {
+		mutex_unlock(&group->mutex);
+		return -EPERM;
+	}
+
+	grp_dev = list_first_entry(&group->devices, struct group_device, list);
+	dev = grp_dev->dev;
+
 	/* We can bring up a flush queue without tearing down the domain. */
 	if (req_type == IOMMU_DOMAIN_DMA_FQ &&
 	    group->default_domain->type == IOMMU_DOMAIN_DMA) {
-		ret = iommu_dma_init_fq(group->default_domain);
+		ret = iommu_dma_init_fq(dev, group->default_domain);
 		if (!ret)
 			group->default_domain->type = IOMMU_DOMAIN_DMA_FQ;
 		mutex_unlock(&group->mutex);
@@ -2978,14 +2987,11 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
 		return ret ?: count;
 	}
 
-	/* Otherwise, ensure that device exists and no driver is bound. */
-	if (list_empty(&group->devices) || group->owner_cnt) {
+	/* Otherwise, ensure that no driver is bound. */
+	if (group->owner_cnt) {
 		mutex_unlock(&group->mutex);
 		return -EPERM;
 	}
-
-	grp_dev = list_first_entry(&group->devices, struct group_device, list);
-	dev = grp_dev->dev;
 
 	ret = iommu_change_dev_def_domain(group, dev, req_type);
 

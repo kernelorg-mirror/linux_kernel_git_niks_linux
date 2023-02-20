@@ -220,6 +220,21 @@ struct iommu_iotlb_gather {
 };
 
 /**
+ * struct dma_iommu_options - Options for dma-iommu
+ *
+ * @flags: Flag bits for enabling/disabling dma-iommu settings
+ *
+ * This structure is intended to provide IOMMU drivers a way to influence the
+ * behavior of the dma-iommu DMA API implementation. This allows optimizing for
+ * example for a virtualized environment with slow IOTLB flushes.
+ */
+struct dma_iommu_options {
+#define IOMMU_DMA_OPTS_PER_CPU_QUEUE	(0L << 0)
+#define IOMMU_DMA_OPTS_SINGLE_QUEUE	(1L << 0)
+	u64	flags;
+};
+
+/**
  * struct iommu_ops - iommu ops and capabilities
  * @capable: check capability
  * @domain_alloc: allocate iommu domain
@@ -242,6 +257,9 @@ struct iommu_iotlb_gather {
  *		- IOMMU_DOMAIN_IDENTITY: must use an identity domain
  *		- IOMMU_DOMAIN_DMA: must use a dma domain
  *		- 0: use the default setting
+ * @tune_dma_iommu: Allows the IOMMU driver to modify the default
+ *		    options of the dma-iommu layer for a specific
+ *		    device.
  * @default_domain_ops: the default ops for domains
  * @remove_dev_pasid: Remove any translation configurations of a specific
  *                    pasid, so that any DMA transactions with this pasid
@@ -277,6 +295,9 @@ struct iommu_ops {
 
 	int (*def_domain_type)(struct device *dev);
 	void (*remove_dev_pasid)(struct device *dev, ioasid_t pasid);
+
+	void (*tune_dma_iommu)(struct device *dev,
+			       struct dma_iommu_options *options);
 
 	const struct iommu_domain_ops *default_domain_ops;
 	unsigned long pgsize_bitmap;
