@@ -2920,9 +2920,7 @@ static int iommu_change_dev_def_domain(struct iommu_group *group,
 
 	/* We can bring up a flush queue without tearing down the domain */
 	if (type == IOMMU_DOMAIN_DMA_FQ && prev_dom->type == IOMMU_DOMAIN_DMA) {
-		ret = iommu_dma_init_fq(prev_dom);
-		if (!ret)
-			prev_dom->type = IOMMU_DOMAIN_DMA_FQ;
+		ret = iommu_dma_init_fq(dev, prev_dom);
 		goto out;
 	}
 
