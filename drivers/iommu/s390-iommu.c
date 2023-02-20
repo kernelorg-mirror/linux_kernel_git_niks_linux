@@ -451,13 +451,19 @@ static void s390_iommu_get_resv_regions(struct device *dev,
 	}
 }
 
+#define S390_IOMMU_SINGLE_FQ_SIZE      32768
+#define S390_IOMMU_SINGLE_FQ_TIMEOUT   1000
+
 static void s390_iommu_tune_dma_iommu(struct device *dev,
 					     struct dma_iommu_options *options)
 {
 	struct zpci_dev *zdev = to_zpci_dev(dev);
 
-	if (zdev->tlb_refresh)
+	if (zdev->tlb_refresh) {
 		options->flags |= IOMMU_DMA_OPTS_SINGLE_QUEUE;
+		options->fq_size = S390_IOMMU_SINGLE_FQ_SIZE;
+		options->fq_timeout = S390_IOMMU_SINGLE_FQ_TIMEOUT;
+	}
 }
 
 static struct iommu_device *s390_iommu_probe_device(struct device *dev)

@@ -223,6 +223,8 @@ struct iommu_iotlb_gather {
  * struct dma_iommu_options - Options for dma-iommu
  *
  * @flags: Flag bits for enabling/disabling dma-iommu settings
+ * @fq_size: Size of the IOTLB flush queue(s), must be a power of two
+ * @fq_timeout: Timeout used for queued IOTLB flushes
  *
  * This structure is intended to provide IOMMU drivers a way to influence the
  * behavior of the dma-iommu DMA API implementation. This allows optimizing for
@@ -231,7 +233,9 @@ struct iommu_iotlb_gather {
 struct dma_iommu_options {
 #define IOMMU_DMA_OPTS_PER_CPU_QUEUE	(0L << 0)
 #define IOMMU_DMA_OPTS_SINGLE_QUEUE	(1L << 0)
-	u64	flags;
+	u64		flags;
+	size_t		fq_size;
+	unsigned int	fq_timeout;
 };
 
 /**
