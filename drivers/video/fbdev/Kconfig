@@ -245,7 +245,7 @@ config FB_FM2
 
 config FB_ARC
 	tristate "Arc Monochrome LCD board support"
-	depends on FB && (X86 || COMPILE_TEST)
+	depends on FB && HAS_IOPORT && (X86 || COMPILE_TEST)
 	select FB_SYSMEM_HELPERS_DEFERRED
 	help
 	  This enables support for the Arc Monochrome LCD board. The board
