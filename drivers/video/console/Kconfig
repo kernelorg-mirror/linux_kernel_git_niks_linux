@@ -10,6 +10,7 @@ config VGA_CONSOLE
 	depends on ALPHA || X86 || \
 		(ARM && ARCH_FOOTBRIDGE) || \
 		(MIPS && (MIPS_MALTA || SIBYTE_BCM112X || SIBYTE_SB1250 || SIBYTE_BCM1x80 || SNI_RM))
+	depends on HAS_IOPORT
 	select APERTURE_HELPERS if (DRM || FB || VFIO_PCI_CORE)
 	default y
 	help
