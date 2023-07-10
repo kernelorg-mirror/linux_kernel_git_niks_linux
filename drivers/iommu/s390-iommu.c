@@ -710,6 +710,15 @@ struct zpci_iommu_ctrs *zpci_get_iommu_ctrs(struct zpci_dev *zdev)
 	return &zdev->s390_domain->ctrs;
 }
 
+static int s390_iommu_def_domain_type(struct device *dev)
+{
+	struct zpci_dev *zdev = to_zpci_dev(dev);
+
+	if (zdev->pft == PCI_FUNC_TYPE_ISM)
+		return IOMMU_DOMAIN_DMA;
+	return 0;
+}
+
 int zpci_init_iommu(struct zpci_dev *zdev)
 {
 	u64 aperture_size;
@@ -789,6 +798,7 @@ static const struct iommu_ops s390_iommu_ops = {
 	.probe_device = s390_iommu_probe_device,
 	.probe_finalize = s390_iommu_probe_finalize,
 	.release_device = s390_iommu_release_device,
+	.def_domain_type = s390_iommu_def_domain_type,
 	.device_group = generic_device_group,
 	.pgsize_bitmap = SZ_4K,
 	.get_resv_regions = s390_iommu_get_resv_regions,
