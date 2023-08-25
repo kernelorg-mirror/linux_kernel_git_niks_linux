@@ -189,6 +189,12 @@ static int viommu_sync_req(struct viommu_dev *viommu)
 	int ret;
 	unsigned long flags;
 
+	/*
+	 * .iotlb_sync_map and .flush_iotlb_all may be called before the viommu
+	 * is initialized e.g. via iommu_create_device_direct_mappings()
+	 */
+	if (!viommu)
+		return 0;
 	spin_lock_irqsave(&viommu->request_lock, flags);
 	ret = __viommu_sync_req(viommu);
 	if (ret)
@@ -843,7 +849,7 @@ static int viommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 			.flags		= cpu_to_le32(flags),
 		};
 
-		ret = viommu_send_req_sync(vdomain->viommu, &map, sizeof(map));
+		ret = viommu_add_req(vdomain->viommu, &map, sizeof(map));
 		if (ret) {
 			viommu_del_mappings(vdomain, iova, end);
 			return ret;
@@ -910,6 +916,14 @@ static void viommu_iotlb_sync(struct iommu_domain *domain,
 	struct viommu_domain *vdomain = to_viommu_domain(domain);
 
 	viommu_sync_req(vdomain->viommu);
+}
+
+static int viommu_iotlb_sync_map(struct iommu_domain *domain,
+				 unsigned long iova, size_t size)
+{
+	struct viommu_domain *vdomain = to_viommu_domain(domain);
+
+	return viommu_sync_req(vdomain->viommu);
 }
 
 static void viommu_get_resv_regions(struct device *dev, struct list_head *head)
@@ -1058,6 +1072,7 @@ static struct iommu_ops viommu_ops = {
 		.unmap_pages		= viommu_unmap_pages,
 		.iova_to_phys		= viommu_iova_to_phys,
 		.iotlb_sync		= viommu_iotlb_sync,
+		.iotlb_sync_map		= viommu_iotlb_sync_map,
 		.free			= viommu_domain_free,
 	}
 };
