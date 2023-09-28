@@ -1908,16 +1908,16 @@ static int probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto adev_init_err;
 	}
 
-	err = mlx5_mdev_init(dev, prof_sel);
-	if (err)
-		goto mdev_init_err;
-
 	err = mlx5_pci_init(dev, pdev, id);
 	if (err) {
 		mlx5_core_err(dev, "mlx5_pci_init failed with error code %d\n",
 			      err);
 		goto pci_init_err;
 	}
+
+	err = mlx5_mdev_init(dev, prof_sel);
+	if (err)
+		goto mdev_init_err;
 
 	err = mlx5_init_one(dev);
 	if (err) {
@@ -1939,10 +1939,10 @@ static int probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	return 0;
 
 err_init_one:
-	mlx5_pci_close(dev);
-pci_init_err:
 	mlx5_mdev_uninit(dev);
 mdev_init_err:
+	mlx5_pci_close(dev);
+pci_init_err:
 	mlx5_adev_idx_free(dev->priv.adev_idx);
 adev_init_err:
 	mlx5_devlink_free(devlink);
