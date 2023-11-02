@@ -2436,6 +2436,7 @@ static struct pci_dev *pci_scan_device(struct pci_bus *bus, int devfn)
 	dev->devfn = devfn;
 	dev->vendor = l & 0xffff;
 	dev->device = (l >> 16) & 0xffff;
+	dev->untrusted = 1;
 
 	if (pci_setup_device(dev)) {
 		pci_bus_put(dev->bus);

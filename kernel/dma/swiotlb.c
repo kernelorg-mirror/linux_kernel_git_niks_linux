@@ -1300,6 +1300,24 @@ phys_addr_t swiotlb_tbl_map_single(struct device *dev, phys_addr_t orig_addr,
 	for (i = 0; i < nr_slots(alloc_size + offset); i++)
 		pool->slots[index + i].orig_addr = slot_addr(orig_addr, i);
 	tlb_addr = slot_addr(pool->start, index) + offset;
+
+	if (tlb_addr + alloc_size > pool->end) {
+		pr_info("\n\ttransient:%i"
+			"\n\tindex:%i"
+			"\n\tdma_get_min_align_mask(dev):%llx"
+			"\n\torig_addr:%llx"
+			"\n\ttlb_addr=%llx"
+			"\n\tstart:%llx"
+			"\n\tend:%llx"
+			"\n\tpool_size:%zu"
+			"\n\talloc_size:%zu"
+			"\n\toffset:%u\n",
+			pool->transient, index, (u64)dma_get_min_align_mask(dev), (u64)orig_addr,
+			(u64)tlb_addr, (u64)pool->start, (u64)pool->end,
+			(size_t)(pool->end - pool->start), alloc_size, offset);
+		return (phys_addr_t)DMA_MAPPING_ERROR;
+	}
+
 	/*
 	 * When dir == DMA_FROM_DEVICE we could omit the copy from the orig
 	 * to the tlb buffer, if we knew for sure the device will
