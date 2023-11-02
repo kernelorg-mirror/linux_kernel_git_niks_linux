@@ -148,10 +148,6 @@ static void pv_init(void)
 		return;
 
 	virtio_set_mem_acc_cb(virtio_require_restricted_mem_acc);
-
-	/* make sure bounce buffers are shared */
-	swiotlb_init(true, SWIOTLB_FORCE | SWIOTLB_VERBOSE);
-	swiotlb_update_mem_attributes();
 }
 
 void __init mem_init(void)
@@ -163,6 +159,9 @@ void __init mem_init(void)
         high_memory = (void *) __va(max_low_pfn * PAGE_SIZE);
 
 	pv_init();
+	/* Enable swiotlb */
+	swiotlb_init(true, SWIOTLB_FORCE | SWIOTLB_VERBOSE);
+	swiotlb_update_mem_attributes();
 	kfence_split_mapping();
 	/* Setup guest page hinting */
 	cmma_init();
