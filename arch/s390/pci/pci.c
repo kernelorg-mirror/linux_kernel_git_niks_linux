@@ -609,6 +609,13 @@ int pcibios_device_add(struct pci_dev *pdev)
 			continue;
 		pci_claim_resource(pdev, i);
 	}
+	/*
+	 * The below is the s390 equivalent of pci_configure_ari()
+	 * which we can't use directly because the bridge devices
+	 * are hidden in firmware.
+	 */
+	if (!pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ARI))
+		zdev->zbus->bus->ari_enabled = 0;
 
 	return 0;
 }
