@@ -28,6 +28,7 @@
 #include <linux/nospec.h>
 #include <linux/sched/mm.h>
 #include <linux/iommufd.h>
+#include <linux/ioremap.h>
 #if IS_ENABLED(CONFIG_EEH)
 #include <asm/eeh.h>
 #endif
@@ -129,9 +130,12 @@ static void vfio_pci_probe_mmaps(struct vfio_pci_core_device *vdev)
 		/*
 		 * The PCI core shouldn't set up a resource with a
 		 * type but zero size. But there may be bugs that
-		 * cause us to do that.
+		 * cause us to do that. There is also at least one
+		 * device which advertises a resource too large to
+		 * ioremap().
 		 */
-		if (!resource_size(res))
+		if (!resource_size(res) ||
+		    resource_size(res) > (IOREMAP_END + 1 - IOREMAP_START))
 			goto no_mmap;
 
 		if (resource_size(res) >= PAGE_SIZE) {
