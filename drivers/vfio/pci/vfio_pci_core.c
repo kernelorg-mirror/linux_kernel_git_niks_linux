@@ -128,10 +128,9 @@ static void vfio_pci_probe_mmaps(struct vfio_pci_core_device *vdev)
 
 		/*
 		 * The PCI core shouldn't set up a resource with a
-		 * type but zero size. But there may be bugs that
-		 * cause us to do that.
+		 * type but zero size or non-compliant BARs.
 		 */
-		if (!resource_size(res))
+		if (!resource_size(res) || vdev->pdev->non_compliant_bars)
 			goto no_mmap;
 
 		if (resource_size(res) >= PAGE_SIZE) {
