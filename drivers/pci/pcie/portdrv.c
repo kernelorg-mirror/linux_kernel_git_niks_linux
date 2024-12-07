@@ -270,7 +270,8 @@ static int get_port_device_capability(struct pci_dev *dev)
 		u32 linkcap;
 
 		pcie_capability_read_dword(dev, PCI_EXP_LNKCAP, &linkcap);
-		if (linkcap & PCI_EXP_LNKCAP_LBNC)
+		if (linkcap & PCI_EXP_LNKCAP_LBNC &&
+		    (linkcap & PCI_EXP_LNKCAP_SLS) != PCI_EXP_LNKCAP_SLS_2_5GB)
 			services |= PCIE_PORT_SERVICE_BWCTRL;
 	}
 
