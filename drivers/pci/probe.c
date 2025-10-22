@@ -2808,15 +2808,18 @@ static int next_ari_fn(struct pci_bus *bus, struct pci_dev *dev, int fn)
 	return next_fn;
 }
 
-static int next_fn(struct pci_bus *bus, struct pci_dev *dev, int fn)
+static int next_fn(struct pci_bus *bus, struct pci_dev *dev, int fn,
+		   bool isolated_fns)
 {
-	if (pci_ari_enabled(bus))
-		return next_ari_fn(bus, dev, fn);
+	if (!isolated_fns) {
+		if (pci_ari_enabled(bus))
+			return next_ari_fn(bus, dev, fn);
 
+		/* only multifunction devices may have more functions */
+		if (dev && !dev->multifunction)
+			return -ENODEV;
+	}
 	if (fn >= 7)
-		return -ENODEV;
-	/* only multifunction devices may have more functions */
-	if (dev && !dev->multifunction)
 		return -ENODEV;
 
 	return fn + 1;
@@ -2859,10 +2862,12 @@ int pci_scan_slot(struct pci_bus *bus, int devfn)
 {
 	struct pci_dev *dev;
 	int fn = 0, nr = 0;
+	bool isolated_fns;
 
 	if (only_one_child(bus) && (devfn > 0))
 		return 0; /* Already scanned the entire slot */
 
+	isolated_fns = hypervisor_isolated_pci_functions();
 	do {
 		dev = pci_scan_single_device(bus, devfn + fn);
 		if (dev) {
@@ -2876,10 +2881,10 @@ int pci_scan_slot(struct pci_bus *bus, int devfn)
 			 * a hypervisor that passes through individual PCI
 			 * functions.
 			 */
-			if (!hypervisor_isolated_pci_functions())
+			if (!isolated_fns)
 				break;
 		}
-		fn = next_fn(bus, dev, fn);
+		fn = next_fn(bus, dev, fn, isolated_fns);
 	} while (fn >= 0);
 
 	/* Only one slot has PCIe device */
