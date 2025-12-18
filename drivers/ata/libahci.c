@@ -208,7 +208,7 @@ static int devslp_idle_timeout __read_mostly = 1000;
 module_param(devslp_idle_timeout, int, 0644);
 MODULE_PARM_DESC(devslp_idle_timeout, "device sleep idle timeout");
 
-static void ahci_enable_ahci(void __iomem *mmio)
+static int ahci_enable_ahci(void __iomem *mmio)
 {
 	int i;
 	u32 tmp;
@@ -216,7 +216,7 @@ static void ahci_enable_ahci(void __iomem *mmio)
 	/* turn on AHCI_EN */
 	tmp = readl(mmio + HOST_CTL);
 	if (tmp & HOST_AHCI_EN)
-		return;
+		return 0;
 
 	/* Some controllers need AHCI_EN to be written multiple times.
 	 * Try a few times before giving up.
@@ -226,11 +226,11 @@ static void ahci_enable_ahci(void __iomem *mmio)
 		writel(tmp, mmio + HOST_CTL);
 		tmp = readl(mmio + HOST_CTL);	/* flush && sanity check */
 		if (tmp & HOST_AHCI_EN)
-			return;
+			return 0;
 		msleep(10);
 	}
 
-	WARN_ON(1);
+	return -EIO;
 }
 
 /**
@@ -450,10 +450,16 @@ void ahci_save_initial_config(struct device *dev, struct ahci_host_priv *hpriv)
 	void __iomem *port_mmio;
 	unsigned long port_map;
 	u32 cap, cap2, vers;
-	int i;
+	int i, rc;
 
 	/* make sure AHCI mode is enabled before accessing CAP */
-	ahci_enable_ahci(mmio);
+	rc = ahci_enable_ahci(mmio);
+	if (rc) {
+		dev_err(dev, "ahci_enable_ahci() hung\n");
+		WARN_ON(1);
+	} else {
+		dev_info(dev, "ahci_enable_ahci() succeeded\n");
+	}
 
 	/*
 	 * Values prefixed with saved_ are written back to the HBA and ports
@@ -976,12 +982,19 @@ int ahci_reset_controller(struct ata_host *host)
 	struct ahci_host_priv *hpriv = host->private_data;
 	void __iomem *mmio = hpriv->mmio;
 	u32 tmp;
+	int rc;
 
 	/*
 	 * We must be in AHCI mode, before using anything AHCI-specific, such
 	 * as HOST_RESET.
 	 */
-	ahci_enable_ahci(mmio);
+	rc = ahci_enable_ahci(mmio);
+	if (rc) {
+		dev_err(host->dev, "ahci_enable_ahci() hung\n");
+		WARN_ON(1);
+	} else {
+		dev_info(host->dev, "ahci_enable_ahci() succeeded\n");
+	}
 
 	/* Global controller reset */
 	if (ahci_skip_host_reset) {
@@ -1009,7 +1022,13 @@ int ahci_reset_controller(struct ata_host *host)
 	}
 
 	/* Turn on AHCI mode */
-	ahci_enable_ahci(mmio);
+	rc = ahci_enable_ahci(mmio);
+	if (rc) {
+		dev_err(host->dev, "ahci_enable_ahci() hung\n");
+		WARN_ON(1);
+	} else {
+		dev_info(host->dev, "ahci_enable_ahci() succeeded\n");
+	}
 
 	/* Some registers might be cleared on reset. Restore initial values. */
 	if (!(hpriv->flags & AHCI_HFLAG_NO_WRITE_TO_RO))
